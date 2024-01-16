@@ -11,8 +11,13 @@ import {
   SVGOverlay,
   TileLayer,
   Tooltip,
+  Map,
 } from "react-leaflet";
+
+import L from "leaflet";
+
 import "leaflet/dist/leaflet.css";
+import "leaflet-draw/dist/leaflet.draw.css";
 
 const rectangle = [
   [50, -50],
@@ -20,49 +25,37 @@ const rectangle = [
 ];
 
 const MapaComponent = () => {
-  const [posiciones, setPosiciones] = React.useState([
-    {
-      id: 1,
-      color: "red",
-      bound: [
-        [50, -50],
-        [55, -45],
-      ],
-      posicions: [[40.51, 50]],
+  const [mapState, setMapState] = React.useState({
+    center: {
+      lat: -24.9923319,
+      lng: 115.2252427,
     },
-    {
-      id: 2,
-      color: "black",
-      bound: [
-        [40, -50],
-        [45, -45],
-      ],
-      posicions: [[51.51, -0.12]],
-    },
-  ]);
+    zoom: 4,
+    draggable: true,
+    markerData: [],
+  });
 
-  const rectangleRefs = posiciones.map(() => useRef());
-
-  const handleRectangleDrag = (index, event) => {
-    const latlng = event.target.getLatLng();
-    const newPositions = [...posiciones];
-    newPositions[index].posicions = [[latlng.lat, latlng.lng]];
-    setPosiciones(newPositions);
+  const addMarker = (event) => {
+    const coords = event.latlng;
+    setMapState((prevState) => ({
+      ...prevState,
+      markerData: [...prevState.markerData, coords],
+    }));
   };
 
-  React.useEffect(() => {
-    rectangleRefs.forEach((ref, index) => {
-      const rectangle = ref.current.leafletElement;
+  const updateMarker = (event) => {
+    const latLng = event.target.getLatLng();
+    const markerIndex = event.target.options.marker_index;
 
-      rectangle.dragging.enable();
-
-      rectangle.on("dragend", (event) => handleRectangleDrag(index, event));
+    setMapState((prevState) => {
+      const markerData = [...prevState.markerData];
+      markerData[markerIndex] = latLng;
+      return { ...prevState, markerData };
     });
-  }, [rectangleRefs]);
+  };
 
   return (
     <>
-      {JSON.stringify(posiciones)}
       <MapContainer
         style={{ height: "100vh" }}
         center={[0, 0]}
@@ -70,6 +63,7 @@ const MapaComponent = () => {
         scrollWheelZoom={false}
         zoomControl={false}
         dragging={true}
+        onClick={addMarker}
       >
         <TileLayer
           attribution="Wibo Development"
@@ -77,21 +71,15 @@ const MapaComponent = () => {
         />
 
         <LayerGroup>
-          {posiciones.map((posicion, index) => {
-            return (
-              <Rectangle
-                key={posicion.id}
-                bounds={posicion.bound}
-                center={posicion.posicions}
-                ref={rectangleRefs[index]}
-                pathOptions={{ color: posicion.color }}
-                draggable={true}
-                onDrag={(event) => handleRectangleDrag(index, event)}
-              >
-                <Tooltip>Tooltip for CircleMarker</Tooltip>
-              </Rectangle>
-            );
-          })}
+          {mapState.markerData.map((element, index) => (
+            <Marker
+              key={index}
+              marker_index={index}
+              position={element}
+              draggable={mapState.draggable}
+              onDragend={updateMarker}
+            />
+          ))}
         </LayerGroup>
       </MapContainer>
     </>
